@@ -1,0 +1,28 @@
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/google-services.json
+android/app/src/main/jniLibs/
+*.apk
+*.aab
+.idea/
+*.iml
+
+# Rust
+rust-core/target/
+
+# Python
+server/.venv/
+server/.env
+server/service-account.json
+server/*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local tooling / scratch
+.android-sdk/
+.tmp-*/
+.DS_Store

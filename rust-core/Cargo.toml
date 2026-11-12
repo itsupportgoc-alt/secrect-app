@@ -1,0 +1,23 @@
+[package]
+name = "secretchat_core"
+version = "0.1.0"
+edition = "2021"
+description = "Offline outbox for the Secret Chat Android client, exposed over JNI."
+license = "MIT"
+
+[lib]
+name = "secretchat_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true
