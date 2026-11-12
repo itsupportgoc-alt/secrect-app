@@ -46,6 +46,12 @@ All versions: <https://github.com/itsupportgoc-alt/secrect-app/releases>
   resized to 1600 px JPEGs, stored in a private `chat-images` bucket that only
   the two people in the chat can read, and queued on disk if you're offline.
   Tap a photo to view it full screen.
+- **Profile pictures**: tap your picture (top right) to add or change it. It
+  shows in the chat list, chat header and next to messages.
+- **Notifications** for new messages, even when the app is closed (Firebase
+  Cloud Messaging, sent by the `push` Supabase Edge Function).
+- **In-app updates**: the app checks the latest GitHub release and offers to
+  download and install it. No need to visit GitHub.
 - Sends are written to a **persisted Rust outbox** first. If the network fails,
   the message is retried every 15 seconds with exponential backoff while the
   chat is open, and replayed with the same client UUID, so it cannot duplicate.
@@ -59,6 +65,8 @@ All versions: <https://github.com/itsupportgoc-alt/secrect-app/releases>
 ```
 supabase/migrations/20261112000000_init.sql   schema, RLS, RPCs, realtime, triggers
 supabase/migrations/20261112100000_image_messages.sql   photo messages + private storage bucket
+supabase/migrations/20261112200000_avatars_and_push.sql  profile pictures + push trigger
+supabase/functions/push/                      Edge Function that sends notifications via FCM
 rust-core/                                    offline outbox crate + JNI bridge + tests
 android/                                      Kotlin/Compose app (Gradle project)
 server/                                       FastAPI push-notification service + tests
@@ -191,6 +199,16 @@ The Android project compiles with `./gradlew :app:assembleDebug`.
   service) can read them. Adding E2EE would require key exchange and storing
   ciphertext only.
 - Webhook calls are authenticated with a constant-time compared shared secret.
+
+## Publishing an update
+
+1. Raise `versionCode` and `versionName` in `android/app/build.gradle.kts`.
+2. Build the APK on the **same PC** as before (updates must be signed with the
+   same key, which for debug builds is your PC's `~/.android/debug.keystore`).
+3. Create a GitHub release whose tag is the new version (for example `v1.3`)
+   and attach `app-debug.apk`.
+
+Installed apps see "Update available" the next time they're opened.
 
 ## Known limitations / next steps
 

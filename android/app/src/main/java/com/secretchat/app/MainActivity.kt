@@ -1,6 +1,7 @@
 package com.secretchat.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,27 +23,60 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.secretchat.app.notifications.ActiveChat
+import com.secretchat.app.notifications.MessageNotifications
 import com.secretchat.app.ui.AppViewModel
 import com.secretchat.app.ui.AuthScreen
 import com.secretchat.app.ui.ChatScreen
 import com.secretchat.app.ui.ConversationsScreen
+import com.secretchat.app.ui.UpdateDialog
 import com.secretchat.app.ui.theme.SecretChatTheme
 import io.github.jan.supabase.auth.status.SessionStatus
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: AppViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleNotificationTap(intent)
         setContent {
             SecretChatTheme {
-                SecretChatApp()
+                SecretChatApp(viewModel)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationTap(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ActiveChat.appVisible = true
+        viewModel.activeConversation?.let {
+            MessageNotifications.cancel(this, it.conversationId)
+        }
+        viewModel.checkForUpdates()
+    }
+
+    override fun onPause() {
+        ActiveChat.appVisible = false
+        super.onPause()
+    }
+
+    private fun handleNotificationTap(intent: Intent?) {
+        val conversationId = intent?.getStringExtra(MessageNotifications.EXTRA_CONVERSATION_ID) ?: return
+        val title = intent.getStringExtra(MessageNotifications.EXTRA_TITLE).orEmpty()
+        intent.removeExtra(MessageNotifications.EXTRA_CONVERSATION_ID)
+        viewModel.openFromNotification(conversationId, title)
     }
 }
 
 @Composable
-private fun SecretChatApp(viewModel: AppViewModel = viewModel()) {
+private fun SecretChatApp(viewModel: AppViewModel) {
     val context = LocalContext.current
     val sessionStatus by viewModel.sessionStatus.collectAsStateWithLifecycle()
     val notificationPermission = rememberLauncherForActivityResult(
@@ -79,4 +114,6 @@ private fun SecretChatApp(viewModel: AppViewModel = viewModel()) {
             else -> AuthScreen(viewModel)
         }
     }
+
+    UpdateDialog(viewModel)
 }

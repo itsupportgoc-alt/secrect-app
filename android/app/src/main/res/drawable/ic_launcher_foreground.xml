@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Chat bubble with a padlock. Everything sits inside the 66dp adaptive-icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -6,8 +7,16 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M34,34h40a8,8 0,0 1,8 8v20a8,8 0,0 1,-8 8H54l-12,10v-10h-8a8,8 0,0 1,-8 -8V42a8,8 0,0 1,8 -8z" />
+        android:pathData="M40,30h28a12,12 0,0 1,12 12v16a12,12 0,0 1,-12 12H52l-14,10l2,-10a12,12 0,0 1,-12 -12V42a12,12 0,0 1,12 -12z" />
     <path
-        android:fillColor="#3D5AFE"
-        android:pathData="M42,46h24v4H42zM42,54h18v4H42z" />
+        android:pathData="M48.5,47V42a5.5,5.5 0,0 1,11 0V47"
+        android:strokeColor="#5B3FD9"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#5B3FD9"
+        android:pathData="M47,46h14a2.5,2.5 0,0 1,2.5 2.5v9a2.5,2.5 0,0 1,-2.5 2.5H47a2.5,2.5 0,0 1,-2.5 -2.5v-9A2.5,2.5 0,0 1,47 46z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,50.3a2.2,2.2 0,1 1,0 4.4a2.2,2.2 0,1 1,0 -4.4zM53.1,53.5h1.8v3.3h-1.8z" />
 </vector>

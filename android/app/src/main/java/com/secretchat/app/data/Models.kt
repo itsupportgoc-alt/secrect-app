@@ -24,4 +24,13 @@ data class ConversationSummary(
     @SerialName("last_message") val lastMessage: String? = null,
     @SerialName("last_message_at") val lastMessageAt: String? = null,
     @SerialName("other_user_id") val otherUserId: String? = null,
+    @SerialName("other_avatar_url") val otherAvatarUrl: String? = null,
+)
+
+@Serializable
+data class Profile(
+    val id: String,
+    val username: String,
+    @SerialName("display_name") val displayName: String = "",
+    @SerialName("avatar_url") val avatarUrl: String? = null,
 )

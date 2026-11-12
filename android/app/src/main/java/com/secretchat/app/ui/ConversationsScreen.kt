@@ -1,7 +1,6 @@
 package com.secretchat.app.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -30,14 +30,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationsScreen(viewModel: AppViewModel) {
     var showNewChat by rememberSaveable { mutableStateOf(false) }
+    var showProfile by rememberSaveable { mutableStateOf(false) }
     var username by rememberSaveable { mutableStateOf("") }
     val conversations = viewModel.conversations
+    val me = viewModel.myProfile
 
     LaunchedEffect(Unit) {
         viewModel.refreshConversations()
@@ -48,9 +52,15 @@ fun ConversationsScreen(viewModel: AppViewModel) {
             TopAppBar(
                 title = { Text("Secret Chat") },
                 actions = {
-                    TextButton(onClick = { viewModel.signOut() }) {
-                        Text("Sign out")
-                    }
+                    Avatar(
+                        url = me?.avatarUrl,
+                        name = me?.displayName?.ifBlank { null } ?: me?.username ?: "Me",
+                        size = 36.dp,
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .clip(CircleShape)
+                            .clickable { showProfile = true },
+                    )
                 },
             )
         },
@@ -65,15 +75,17 @@ fun ConversationsScreen(viewModel: AppViewModel) {
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            viewModel.error?.let { message ->
-                Text(
-                    message,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+            if (!showProfile) {
+                viewModel.error?.let { message ->
+                    Text(
+                        message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
 
             if (conversations.isEmpty()) {
@@ -87,9 +99,16 @@ fun ConversationsScreen(viewModel: AppViewModel) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(conversations, key = { it.conversationId }) { conversation ->
                         ListItem(
+                            leadingContent = {
+                                Avatar(conversation.otherAvatarUrl, conversation.title, 48.dp)
+                            },
                             headlineContent = { Text(conversation.title) },
                             supportingContent = {
-                                Text(conversation.lastMessage ?: "Say hello")
+                                Text(
+                                    conversation.lastMessage ?: "Say hello",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             },
                             trailingContent = {
                                 Text(
@@ -105,6 +124,13 @@ fun ConversationsScreen(viewModel: AppViewModel) {
                     }
                 }
             }
+        }
+    }
+
+    if (showProfile) {
+        ProfileDialog(viewModel) {
+            showProfile = false
+            viewModel.dismissMessages()
         }
     }
 

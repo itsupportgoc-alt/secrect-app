@@ -13,9 +13,15 @@ import com.secretchat.app.data.AuthRepository
 import com.secretchat.app.data.ChatRepository
 import com.secretchat.app.data.ConversationSummary
 import com.secretchat.app.data.Message
+import com.secretchat.app.data.AppUpdate
 import com.secretchat.app.data.PendingImage
+import com.secretchat.app.data.Profile
+import com.secretchat.app.data.ProfileRepository
+import com.secretchat.app.data.UpdateChecker
 import com.secretchat.app.data.SendOutcome
 import com.secretchat.app.data.SupabaseModule
+import com.secretchat.app.notifications.ActiveChat
+import com.secretchat.app.notifications.MessageNotifications
 import com.secretchat.app.outbox.PendingMessage
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
@@ -30,6 +36,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val client = SupabaseModule.client()
     private val authRepository = AuthRepository(client)
     private val chatRepository = ChatRepository(client, application)
+    private val profileRepository = ProfileRepository(client, application)
+    private val updateChecker = UpdateChecker(application)
 
     val sessionStatus = authRepository.sessionStatus
     val currentUserId: String?
@@ -54,6 +62,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var notice by mutableStateOf<String?>(null)
         private set
 
+    /** The signed-in user's profile (username, picture). */
+    var myProfile by mutableStateOf<Profile?>(null)
+        private set
+    var updatingAvatar by mutableStateOf(false)
+        private set
+
+    /** A newer app version on GitHub, shown as a dialog. */
+    var availableUpdate by mutableStateOf<AppUpdate?>(null)
+        private set
+    /** Download progress 0..1 while an update downloads, else null. */
+    var updateProgress by mutableStateOf<Float?>(null)
+        private set
+    var updateError by mutableStateOf<String?>(null)
+        private set
+    private var dismissedUpdateVersion: String? = null
+    private var lastUpdateCheckMs = 0L
+
+    /** A chat to open once signed in (from a notification tap). */
+    private var pendingOpen: Pair<String, String>? = null
+
     private var messageJob: Job? = null
     private var flushJob: Job? = null
     private var authenticatedUserId: String? = null
@@ -70,12 +98,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             pushTokenRegistered = false
                             refreshConversations()
                             registerPushToken(userId)
+                            loadMyProfile(userId)
+                            pendingOpen?.let { (id, title) -> openFromNotification(id, title) }
                         }
                     }
 
                     is SessionStatus.NotAuthenticated -> {
                         authenticatedUserId = null
                         conversations = emptyList()
+                        myProfile = null
                         closeConversation()
                     }
 
@@ -167,6 +198,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openConversation(conversation: ConversationSummary) {
         activeConversation = conversation
+        ActiveChat.conversationId = conversation.conversationId
+        MessageNotifications.cancel(getApplication<Application>(), conversation.conversationId)
         messages = emptyList()
         pendingMessages = emptyList()
         pendingImages = emptyList()
@@ -195,6 +228,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         flushJob?.cancel()
         flushJob = null
         activeConversation = null
+        ActiveChat.conversationId = null
         messages = emptyList()
         pendingMessages = emptyList()
         pendingImages = emptyList()
@@ -240,6 +274,91 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error = "Couldn't use that photo: ${friendly(t)}"
             } finally {
                 sendingPhoto = false
+            }
+        }
+    }
+
+    /** Opens the chat a notification was about (waits for sign-in if needed). */
+    fun openFromNotification(conversationId: String, title: String) {
+        if (authenticatedUserId == null) {
+            pendingOpen = conversationId to title
+            return
+        }
+        pendingOpen = null
+        viewModelScope.launch {
+            val latest = runCatching { chatRepository.conversations() }.getOrNull()
+            if (latest != null) conversations = latest
+            val conversation = conversations.firstOrNull { it.conversationId == conversationId }
+                ?: ConversationSummary(conversationId, title = title.ifBlank { "Chat" })
+            openConversation(conversation)
+        }
+    }
+
+    private fun loadMyProfile(userId: String) {
+        viewModelScope.launch {
+            runCatching { profileRepository.profile(userId) }
+                .onSuccess { myProfile = it }
+        }
+    }
+
+    /** Uploads a new profile picture picked from the gallery. */
+    fun updateAvatar(uri: Uri) {
+        val userId = authenticatedUserId ?: return
+        updatingAvatar = true
+        error = null
+        viewModelScope.launch {
+            try {
+                val url = profileRepository.updateAvatar(userId, uri)
+                myProfile = (myProfile ?: profileRepository.profile(userId))?.copy(avatarUrl = url)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                error = "Couldn't update your picture: ${friendly(t)}"
+            } finally {
+                updatingAvatar = false
+            }
+        }
+    }
+
+    /** Looks for a newer release on GitHub (at most every 30 minutes). */
+    fun checkForUpdates(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
+        if (updateProgress != null) return
+        lastUpdateCheckMs = now
+        viewModelScope.launch {
+            val update = updateChecker.check() ?: return@launch
+            if (update.version != dismissedUpdateVersion) availableUpdate = update
+        }
+    }
+
+    fun dismissUpdate() {
+        dismissedUpdateVersion = availableUpdate?.version
+        availableUpdate = null
+        updateError = null
+    }
+
+    /** Downloads the update and opens Android's installer. */
+    fun startUpdate() {
+        val update = availableUpdate ?: return
+        if (updateProgress != null) return
+        updateError = null
+        if (!updateChecker.canInstall()) {
+            updateError = "Allow \"Install unknown apps\" for Secret Chat, then tap Update again."
+            runCatching { updateChecker.openInstallPermissionSettings() }
+            return
+        }
+        updateProgress = 0f
+        viewModelScope.launch {
+            try {
+                val apk = updateChecker.download(update) { progress -> updateProgress = progress }
+                updateChecker.install(apk)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                updateError = "Update failed: ${friendly(t)}"
+            } finally {
+                updateProgress = null
             }
         }
     }
@@ -300,5 +419,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val USERNAME_PATTERN = Regex("^[a-z0-9_]{3,24}$")
         const val FLUSH_INTERVAL_MS = 15_000L
         const val MAX_ERROR_LENGTH = 240
+        const val UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000L
     }
 }

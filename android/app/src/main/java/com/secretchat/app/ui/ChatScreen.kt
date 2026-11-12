@@ -94,13 +94,17 @@ fun ChatScreen(viewModel: AppViewModel, conversation: ConversationSummary) {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(conversation.title)
-                        Text(
-                            "Real-time",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(conversation.otherAvatarUrl, conversation.title, 36.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(conversation.title)
+                            Text(
+                                "Real-time",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -142,6 +146,7 @@ fun ChatScreen(viewModel: AppViewModel, conversation: ConversationSummary) {
                             message = message,
                             mine = message.senderId == currentUserId,
                             viewModel = viewModel,
+                            conversation = conversation,
                             onOpenImage = { viewing = it },
                         )
                     }
@@ -233,12 +238,18 @@ private fun MessageBubble(
     message: Message,
     mine: Boolean,
     viewModel: AppViewModel,
+    conversation: ConversationSummary,
     onOpenImage: (Bitmap) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
     ) {
+        if (!mine) {
+            Avatar(conversation.otherAvatarUrl, conversation.title, 28.dp)
+            Spacer(Modifier.width(6.dp))
+        }
         Surface(
             color = if (mine) {
                 MaterialTheme.colorScheme.primaryContainer
