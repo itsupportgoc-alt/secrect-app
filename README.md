@@ -28,6 +28,15 @@ outbox and a Python push-notification service.
                                                         └───────────────────────────────┘
 ```
 
+## Download (Android)
+
+[**Download the latest APK**](https://github.com/itsupportgoc-alt/secrect-app/releases/latest/download/app-debug.apk)
+
+Open the link on your Android phone, then tap the downloaded file to install.
+If Android blocks it, allow **Install unknown apps** for your browser when prompted.
+
+All versions: <https://github.com/itsupportgoc-alt/secrect-app/releases>
+
 ## What works
 
 - Email/password sign up and sign in; a profile row is created automatically.
