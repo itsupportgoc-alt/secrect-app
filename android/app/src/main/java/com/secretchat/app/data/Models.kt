@@ -8,11 +8,13 @@ data class Message(
     val id: String,
     @SerialName("conversation_id") val conversationId: String,
     @SerialName("sender_id") val senderId: String,
-    val body: String,
+    val body: String = "",
     @SerialName("client_id") val clientId: String,
     @SerialName("created_at") val createdAt: String,
     @SerialName("edited_at") val editedAt: String? = null,
     @SerialName("deleted_at") val deletedAt: String? = null,
+    /** Storage path in the `chat-images` bucket, or null for a text-only message. */
+    @SerialName("image_path") val imagePath: String? = null,
 )
 
 @Serializable

@@ -42,6 +42,10 @@ All versions: <https://github.com/itsupportgoc-alt/secrect-app/releases>
 - Email/password sign up and sign in; a profile row is created automatically.
 - 1:1 conversations started by username.
 - Messages delivered live to open chats over Supabase Realtime.
+- **Photos**: tap 📷 in a chat to send a picture from your gallery. Photos are
+  resized to 1600 px JPEGs, stored in a private `chat-images` bucket that only
+  the two people in the chat can read, and queued on disk if you're offline.
+  Tap a photo to view it full screen.
 - Sends are written to a **persisted Rust outbox** first. If the network fails,
   the message is retried every 15 seconds with exponential backoff while the
   chat is open, and replayed with the same client UUID, so it cannot duplicate.
@@ -54,6 +58,7 @@ All versions: <https://github.com/itsupportgoc-alt/secrect-app/releases>
 
 ```
 supabase/migrations/20261112000000_init.sql   schema, RLS, RPCs, realtime, triggers
+supabase/migrations/20261112100000_image_messages.sql   photo messages + private storage bucket
 rust-core/                                    offline outbox crate + JNI bridge + tests
 android/                                      Kotlin/Compose app (Gradle project)
 server/                                       FastAPI push-notification service + tests
@@ -70,7 +75,8 @@ server/                                       FastAPI push-notification service 
 ## 1. Set up Supabase
 
 1. Create a project at <https://supabase.com/dashboard>.
-2. Open **SQL Editor** and run `supabase/migrations/20261112000000_init.sql`.
+2. Open **SQL Editor** and run `supabase/migrations/20261112000000_init.sql`,
+   then `supabase/migrations/20261112100000_image_messages.sql`.
    With the Supabase CLI you can instead run `supabase db push` after linking.
 3. In **Authentication → Providers → Email**, keep email enabled. For quick
    local testing, turn **Confirm email** off so sign-up returns a session
@@ -190,7 +196,8 @@ The Android project compiles with `./gradlew :app:assembleDebug`.
 
 - Only 1:1 chats; group conversations exist in the schema (`kind = 'group'`)
   but have no UI.
-- No media, reactions, typing indicators, read receipts, or message search.
+- Photos only (no video, voice notes or files); no reactions, typing
+  indicators, read receipts, or message search.
 - Message history is capped at the most recent 200 rows per open chat.
 - Device tokens are never pruned when FCM rejects them.
 - No CI pipeline or release signing configuration.

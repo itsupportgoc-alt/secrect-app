@@ -65,7 +65,8 @@ def create_app(
             raise HTTPException(status_code=503, detail="push is not configured")
 
         title = await store.sender_name(record.sender_id)
-        preview = record.body
+        # Photo-only messages have an empty body.
+        preview = record.body or "📷 Photo"
         if len(preview) > PREVIEW_LIMIT:
             preview = preview[: PREVIEW_LIMIT - 1] + "…"
 
